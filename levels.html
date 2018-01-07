@@ -72,7 +72,7 @@ Sometimes two eigenvalues get really close and look like they're colliding, but 
 <H2>Random Matrices</H2>
 <p>
 This connects to the theory or random matrices.
-If the elements of the matrix are generated at random from a normal distribution then the distribution of the eigenvalues is similar to the positions in a thermodynamic ensemble of electrically charged particles in a quadratic potential.
+If the elements of the matrix are generated at random from a normal distribution then the distribution of the eigenvalues is similar to the positions in a thermodynamic ensemble of electrically charged particles in a 1D quadratic potential well.
 Because of the electric charge they will tend to repel each other. For example see <a href="https://arxiv.org/abs/1712.07903">Introduction to Random Matrices - Theory and Practice</a>.
 </p>
 
@@ -95,6 +95,7 @@ function makeMatrix(n) {
     return a;
 }
 
+// I don't feel like cluttering my brain with JavaScript.
 function copyMatrix(a) {
     n = a.n;
     b = new Array(n*n).fill(0.0);
@@ -125,6 +126,7 @@ function makeRandom(n) {
     return a;
 }
 
+/*
 function scaleVector(m, a) {
     n = a.length;
     b = new Array(n).fill(0.0);
@@ -149,15 +151,16 @@ function multiplyMatrixVector(m, a) {
 
     return b;
 }
+*/
 
 // Jacobi eigenvalue algorithm
 
-function jacobi(oldS) {
+function jacobi(oldS, maxIters) {
     var S = copyMatrix(oldS);
-    n = S.n
-    e = new Array(n).fill(0.0);
-    changed = new Array(n).fill(true);
-    ind = new Array(n).fill(0);
+    var n = S.n
+    var e = new Array(n).fill(0.0);
+    var changed = new Array(n).fill(true);
+    var ind = new Array(n).fill(0);
 
     // Index of largest off-diagonal element in row k
     function maxind(k) {
@@ -190,15 +193,14 @@ function jacobi(oldS) {
         S[n*i+j] = tmp2;
     }
 
-    state = n;
-    E = makeIdentity(n);
+    var state = n;
+    var E = makeIdentity(n);
 
-    for (k = 0; k < n; ++k) {
+    for (var k = 0; k < n; ++k) {
         ind[k] = maxind(k);
         e[k] = S[n*k+k];
     }
 
-    maxIters = 200;
     iter = 0;
     while (state != 0 && iter < maxIters) {
         ++iter;
@@ -275,6 +277,7 @@ function jacobi(oldS) {
     // console.log(E);
     // console.log("e=", e);
 
+/*
     // test
     for (q = 0; q < n; ++q) {
         v = new Array(n).fill(0.0);
@@ -287,6 +290,7 @@ function jacobi(oldS) {
         // console.log("to:", w);
         // console.log("scaled:", z);
     }
+    */
 
     // I think it's an in-place sort
     e.sort(function (a, b) { return a-b; })
@@ -325,8 +329,8 @@ n = 8
 // console.log("S=" ,"m=" + mathematica(S));
 //jacobi(S);
 
-function displayEigenvalues(e) {
-    canvas = document.getElementById("myCanvas");
+function displayEigenvalues(canvasId, e) {
+    canvas = document.getElementById(canvasId);
     var ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     for (i = 0; i < n; ++i) {
@@ -348,18 +352,19 @@ function handleMove(ii, jj, elem) {
         // console.log(event)
         dx = event.movementX;
         dy = event.movementY;
-        newx = parseFloat(x)+0.001*dx;
+        var delta = 0.002;
+        newx = parseFloat(x)+delta*dx;
         document.getElementById(elem).textContent = newx.toFixed(digits);
         console.log("m"+jj+ii);
         document.getElementById("m"+jj+ii).textContent = newx.toFixed(digits);
         S[n*ii+jj] = newx;
         S[n*jj+ii] = newx;
 
-        e = jacobi(S);
+        e = jacobi(S, 256);
         // console.log("before sort:", e);
         // console.log("after sort:", e);
 
-        displayEigenvalues(e);
+        displayEigenvalues("myCanvas", e);
     }
 }
 
@@ -429,9 +434,9 @@ document.onselectstart = function() {
 }
 
 S = createMatrix(n);
-e = jacobi(S);
+e = jacobi(S, 256);
 createEigenvalues(n, e)
-displayEigenvalues(e);
+displayEigenvalues("myCanvas", e);
 
 </SCRIPT>
 
