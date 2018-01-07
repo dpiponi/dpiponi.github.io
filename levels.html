@@ -1,21 +1,40 @@
+<html>
+<head>
+<title>
+Eigenvalue Explorer
+</title>
+<style>
+table#matrix {
+background-color: #f1f1c1;
+border: 1px solid black;
+}
+tr:nth-child(even) {background-color: #82f222;}
+h1 {
+        text-align: center;
+}
+
+</style>
+</head>
+
+<body>
+
+<H1>Eigenvalue Explorer</H1>
+Here is a symmetric matrix:
+<center>
 <table id="matrix">
-<!--
-<TR><TD onclick="f()" id="m11">1.0</TD><TD id="m12">3.0</TD></TR>
-<TR><TD id="m21">3.0</TD><TD>2.0</TD></TR>
--->
 </table>
+</center>
 
-<math xmlns="http://www.w3.org/1998/Math/MathML"1
-      display="inline">
-<mrow>
-<mi>x</mi><mo>+</mo><mn>2</mn>
-</mrow>
-</math>
-
+And these are its eigenvalues:
+<center>
 <p id="eigs">
 Fred
 </p>
+</center>
 
+This diagram displays the eigenvalues graphically.
+There is a vertical line for each eigenvalue.
+The horizontal coordinate of the line represents the eigenvalue.
 <canvas id="myCanvas" height="200" ; width="1000" style="border: solid 1px black;">Your browser does not support canvas.</canvas>
 
 <SCRIPT>
@@ -219,9 +238,13 @@ function jacobi(oldS) {
         // console.log("scaled:", z);
     }
 
+    // I think it's an in-place sort
+    e.sort(function (a, b) { return a-b; })
+
     return e;
 }
 
+/*
 function mathematica(a) {
     n = a.n;
     r = "{";
@@ -241,15 +264,35 @@ function mathematica(a) {
     r = r+"}"
     return r;
 }
+*/
 
 // End of Jacobi eigenvalue algorithm
 
 digits = 3
-n = 16
-S = makeRandom(n);
+n = 8
+//S = makeMatrix(n);
 //s = makeIdentity(4);
 // console.log("S=" ,"m=" + mathematica(S));
 //jacobi(S);
+
+function displayEigenvalues(e) {
+    result = document.getElementById("eigs")
+    t = ""
+    for (i = 0; i < n; ++i) {
+        t = t+e[i].toFixed(digits) + " ";
+    }
+    result.textContent = t;
+
+    canvas = document.getElementById("myCanvas");
+    var ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (i = 0; i < n; ++i) {
+        ctx.beginPath();
+        ctx.lineTo(500+100*e[i],50);
+        ctx.lineTo(500+100*e[i],150);
+        ctx.stroke();
+    }
+}
 
 // Handle dragging of matrix element
 function handleMove(ii, jj, elem) {
@@ -266,26 +309,10 @@ function handleMove(ii, jj, elem) {
         S[n*jj+ii] = newx;
 
         e = jacobi(S);
-        console.log("before sort:", e);
-        e = e.sort(function (a, b) { return a-b; })
-        console.log("after sort:", e);
+        // console.log("before sort:", e);
+        // console.log("after sort:", e);
 
-        result = document.getElementById("eigs")
-        t = ""
-        for (i = 0; i < n; ++i) {
-            t = t+e[i].toFixed(digits) + " ";
-        }
-        result.textContent = t;
-
-        canvas = document.getElementById("myCanvas");
-        var ctx = canvas.getContext("2d");
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        for (i = 0; i < n; ++i) {
-            ctx.beginPath();
-            ctx.lineTo(500+100*e[i],50);
-            ctx.lineTo(500+100*e[i],150);
-            ctx.stroke();
-        }
+        displayEigenvalues(e);
     }
 }
 
@@ -303,29 +330,48 @@ function handleDown(ii, jj, elem) {
 
 m = document.getElementById("matrix")
 
-for (i = 0; i < n; ++i) {
-    var tr = document.createElement("tr");
-    for (j = 0; j < n; ++j) {
-        var td = document.createElement("td");
-        name = "m"+i+j
-        td.id = name
-        x = Math.random()-0.5;
-        var txt = document.createTextNode(x.toFixed(digits));
+function createMatrix(n) {
+    var S = makeMatrix(n);
+    for (var i = 0; i < n; ++i) {
+        var tr = document.createElement("tr");
+        for (j = 0; j < n; ++j) {
+            if (j >= i) {
+                // Generate new element
+                x = Math.random()-0.5;
+            } else {
+                // Get partner element reflected in diagonal
+                x = S[n*j+i];
+            }
 
-        S[n*i+j] = x;
-        S[n*j+i] = x;
+            S[n*i+j] = x;
 
-        td.appendChild(txt);
-        tr.appendChild(td);
+            var td = document.createElement("td");
+            name = "m"+i+j
+            td.id = name
+            var txt = document.createTextNode(x.toFixed(digits));
 
-        td.addEventListener("mousedown", handleDown(i, j, name));
+
+            td.appendChild(txt);
+            tr.appendChild(td);
+
+            td.addEventListener("mousedown", handleDown(i, j, name));
+        }
+
+        m.appendChild(tr);
     }
 
-    m.appendChild(tr);
+    return S;
 }
 
 document.onselectstart = function() {
     return false;
 }
 
+S = createMatrix(n);
+e = jacobi(S);
+displayEigenvalues(e);
+
 </SCRIPT>
+
+</body>
+</html>
