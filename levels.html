@@ -1,0 +1,331 @@
+<table id="matrix">
+<!--
+<TR><TD onclick="f()" id="m11">1.0</TD><TD id="m12">3.0</TD></TR>
+<TR><TD id="m21">3.0</TD><TD>2.0</TD></TR>
+-->
+</table>
+
+<math xmlns="http://www.w3.org/1998/Math/MathML"1
+      display="inline">
+<mrow>
+<mi>x</mi><mo>+</mo><mn>2</mn>
+</mrow>
+</math>
+
+<p id="eigs">
+Fred
+</p>
+
+<canvas id="myCanvas" height="200" ; width="1000" style="border: solid 1px black;">Your browser does not support canvas.</canvas>
+
+<SCRIPT>
+
+function makeMatrix(n) {
+    a = new Array(n*n).fill(0.0);
+    a.n = n;
+    return a;
+}
+
+function copyMatrix(a) {
+    n = a.n;
+    b = new Array(n*n).fill(0.0);
+    for (i = 0; i < n*n; ++i) {
+        b[i] = a[i];
+    }
+    b.n = n;
+    return b;
+}
+
+function makeIdentity(n) {
+    a = makeMatrix(n);
+    for (i = 0; i < n; ++i) {
+        a[i*n+i] = 1.0;
+    }
+    return a;
+}
+
+function makeRandom(n) {
+    a = makeMatrix(n);
+    for (i = 0; i < n; ++i) {
+        for (j = 0; j < n; ++j) {
+            x = Math.random();
+            a[i*n+j] = x;
+            a[j*n+i] = x;
+        }
+    }
+    return a;
+}
+
+function scaleVector(m, a) {
+    n = a.length;
+    b = new Array(n).fill(0.0);
+
+    for (i = 0; i < n; ++i) {
+        b[i] = m*a[i];
+    }
+
+    return b;
+}
+
+function multiplyMatrixVector(m, a) {
+    b = new Array(n).fill(0.0);
+
+    for (i = 0; i < n; ++i) {
+        t = 0.0;
+        for (j = 0; j < n; ++j) {
+            t = t+m[n*i+j]*a[j];
+        }
+        b[i] = t;
+    }
+
+    return b;
+}
+
+// Jacobi eigenvalue algorithm
+
+function jacobi(oldS) {
+    var S = copyMatrix(oldS);
+    n = S.n
+    e = new Array(n).fill(0.0);
+    changed = new Array(n).fill(true);
+    ind = new Array(n).fill(0);
+
+    // Index of largest off-diagonal element in row k
+    function maxind(k) {
+        m = k+1
+        for (i = k+2; i < n; ++i) {
+            if (Math.abs(S[n*k+i]) > Math.abs(S[n*k+m])) {
+                m = i;
+            }
+        }
+        return m
+    }
+
+    function update(k, t) {
+        // console.log("update=", k, t);
+        y = e[k];
+        e[k] = y+t;
+        if (changed[k] && y == e[k]) {
+            changed[k] = false;
+            --state;
+        } else if (!changed[k] && y != e[k]) {
+            changed[k] = true;
+            ++state;
+        }
+    }
+
+    function rotate(c, s, k, l, i, j) {
+        tmp1 = c*S[n*k+l]-s*S[n*i+j];
+        tmp2 = s*S[n*k+l]+c*S[n*i+j];
+        S[n*k+l] = tmp1;
+        S[n*i+j] = tmp2;
+    }
+
+    state = n;
+    E = makeIdentity(n);
+
+    for (k = 0; k < n; ++k) {
+        ind[k] = maxind(k);
+        e[k] = S[n*k+k];
+    }
+
+    maxIters = 200;
+    iter = 0;
+    while (state != 0 && iter < maxIters) {
+        ++iter;
+
+        // console.log("iter=", iter);
+        // console.log("state=", state);
+
+        // find index (k,l) of pivot p
+        ++iter;
+
+        // Looking for largest off-diagonal element here
+        // console.log("Looking for max in ");
+        // console.log(" "+S);
+        m = 0;
+        for (k = 1; k < n-1; ++k) {
+            if (Math.abs(S[n*k+ind[k]]) > Math.abs(S[n*m+ind[m]])) {
+                m = k;
+            }
+        }
+        k = m;
+        l = ind[m];
+        p = S[n*k+l];
+        // console.log("at k,l="+k+","+l+"   p="+p);
+
+        // calculate c = cos φ, s = sin φ
+        y = 0.5*(e[l]-e[k]);
+        d = Math.abs(y)+Math.sqrt(p*p+y*y);
+        // console.log("d=", d)
+        r = Math.sqrt(p*p+d*d);
+        c = d/r;
+        s = p/r;
+        t = p*p/d;
+
+        if (y < 0) {
+            s = -s;
+            t = -t;
+        }
+
+        S[n*k+l] = 0.0;
+        update(k, -t);
+        update(l, t);
+
+        // rotate rows and columns k and l
+        for (i = 0; i < k; ++i) {
+             rotate(c, s, i, k, i, l);
+        }
+        for (i = k+1; i < l; ++i) {
+             rotate(c, s, k, i, i, l);
+        }
+        for (i = l+1; i < n; ++i) {
+             rotate(c, s, k, i, l, i);
+        }
+
+        // rotate eigenvectors
+
+        for (i = 0; i < n; ++i) {
+            tmp1 = c*E[n*i+k]-s*E[n*i+l];
+            tmp2 = s*E[n*i+k]+c*E[n*i+l];
+
+            E[n*i+k] = tmp1;
+            E[n*i+l] = tmp2;
+        }
+
+        // rows k, l have changed, update rows indk, indl
+        ind[k] = maxind(k);
+        ind[l] = maxind(l);
+        // console.log("val at S[" + k + "," + ind[k] + "] = " + S[k*n+ind[k]]);
+        // console.log("val at S[" + l + "," + ind[l] + "] = " + S[l*n+ind[l]]);
+        // console.log("ind=", ind);
+        // console.log("k,l=",k, l);
+        // console.log("S=", S);
+    }
+
+    // console.log(E);
+    // console.log("e=", e);
+
+    // test
+    for (q = 0; q < n; ++q) {
+        v = new Array(n).fill(0.0);
+        for (r = 0; r < n; ++r) {
+            v[r] = E[n*r+q];
+        }
+        w = multiplyMatrixVector(oldS, v);
+        z = scaleVector(e[q], v);
+        // console.log("from:", v);
+        // console.log("to:", w);
+        // console.log("scaled:", z);
+    }
+
+    return e;
+}
+
+function mathematica(a) {
+    n = a.n;
+    r = "{";
+    for (i = 0; i < n; ++i) {
+        r = r+"{";
+        for (j = 0; j < n; ++j) {
+            r = r+a[i*n+j];
+            if (j < n-1) {
+                r = r+",";
+            }
+        }
+        r = r+"}";
+        if (i < n-1) {
+            r = r+",";
+        }
+    }
+    r = r+"}"
+    return r;
+}
+
+// End of Jacobi eigenvalue algorithm
+
+digits = 3
+n = 8
+S = makeRandom(n);
+//s = makeIdentity(4);
+// console.log("S=" ,"m=" + mathematica(S));
+//jacobi(S);
+
+// Handle dragging of matrix element
+function handleMove(ii, jj, elem) {
+    return function(event) {
+        x = document.getElementById(elem).textContent;
+        // console.log(event)
+        dx = event.movementX;
+        dy = event.movementY;
+        newx = parseFloat(x)+0.01*dx;
+        document.getElementById(elem).textContent = newx.toFixed(digits);
+        console.log("m"+jj+ii);
+        document.getElementById("m"+jj+ii).textContent = newx.toFixed(digits);
+        S[n*ii+jj] = newx;
+        S[n*jj+ii] = newx;
+
+        e = jacobi(S);
+        console.log("before sort:", e);
+        e = e.sort(function (a, b) { return a-b; })
+        console.log("after sort:", e);
+
+        result = document.getElementById("eigs")
+        t = ""
+        for (i = 0; i < n; ++i) {
+            t = t+e[i].toFixed(digits) + " ";
+        }
+        result.textContent = t;
+
+        canvas = document.getElementById("myCanvas");
+        var ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (i = 0; i < n; ++i) {
+            ctx.beginPath();
+            ctx.lineTo(500+100*e[i],50);
+            ctx.lineTo(500+100*e[i],150);
+            ctx.stroke();
+        }
+    }
+}
+
+function handleDown(ii, jj, elem) {
+    return function(event) {
+        // console.log(elem);
+        handler = handleMove(ii, jj, elem);
+        document.addEventListener("mousemove", handler);
+
+        document.addEventListener("mouseup", function() {
+            document.removeEventListener("mousemove", handler);
+        })
+    }
+}
+
+m = document.getElementById("matrix")
+
+for (i = 0; i < n; ++i) {
+    var tr = document.createElement("tr");
+    for (j = 0; j < n; ++j) {
+        var td = document.createElement("td");
+        name = "m"+i+j
+        td.id = name
+        x = Math.random()-0.5;
+        var txt = document.createTextNode(x.toFixed(digits));
+
+        S[n*i+j] = x;
+        S[n*j+i] = x;
+
+        td.appendChild(txt);
+        tr.appendChild(td);
+
+        td.addEventListener("mousedown", handleDown(i, j, name));
+    }
+
+    m.appendChild(tr);
+}
+
+document.onselectstart = function() {
+    return false;
+}
+
+</SCRIPT>
