@@ -330,6 +330,7 @@ function mathematica(a) {
 
 // Apologies for global variables
 digits = 3
+edigits = 5
 n = 8
 
 function displayEigenvalues(canvasId, e) {
@@ -344,7 +345,7 @@ function displayEigenvalues(canvasId, e) {
     }
 
     for (var i = 0; i < n; ++i) {
-        document.getElementById("e"+i).textContent = e[i].toFixed(digits);
+        document.getElementById("e"+i).textContent = e[i].toFixed(edigits);
     }
 }
 
