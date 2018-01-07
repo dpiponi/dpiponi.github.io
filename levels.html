@@ -258,7 +258,7 @@ function handleMove(ii, jj, elem) {
         // console.log(event)
         dx = event.movementX;
         dy = event.movementY;
-        newx = parseFloat(x)+0.01*dx;
+        newx = parseFloat(x)+0.001*dx;
         document.getElementById(elem).textContent = newx.toFixed(digits);
         console.log("m"+jj+ii);
         document.getElementById("m"+jj+ii).textContent = newx.toFixed(digits);
