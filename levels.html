@@ -7,10 +7,19 @@ Eigenvalue Explorer
 table#matrix {
 background-color: #f1f1c1;
 border: 1px solid black;
+border-collapse: collapse;
 }
-tr:nth-child(even) {background-color: #82f222;}
+tr:nth-child(even) {background-color: #92d2a2;}
 h1 {
         text-align: center;
+}
+th, td {
+    padding: 8px;
+}
+table#eigenvalues {
+background-color: #f1f1c1;
+border: 1px solid black;
+border-collapse: collapse;
 }
 
 </style>
@@ -19,23 +28,64 @@ h1 {
 <body>
 
 <H1>Eigenvalue Explorer</H1>
+<H2>The Matrix</H2>
+<p>
 Here is a symmetric matrix:
 <center>
 <table id="matrix">
 </table>
 </center>
-
-And these are its eigenvalues:
-<center>
-<p id="eigs">
-Fred
 </p>
-</center>
 
+<p>
+And these are its eigenvalues:
+
+<center>
+<table id="eigenvalues">
+</table>
+</center>
+</p>
+
+<p>
+You can click on any element in the matrix and drag horizontally to increase or decrease its value.
+As the matrix is symmetric, dragging an off-diagonal element will also modify its symmetrically opposite partner.
+</p>
+
+<p>
 This diagram displays the eigenvalues graphically.
 There is a vertical line for each eigenvalue.
 The horizontal coordinate of the line represents the eigenvalue.
-<canvas id="myCanvas" height="200" ; width="1000" style="border: solid 1px black;">Your browser does not support canvas.</canvas>
+</p>
+
+<p>
+<center>
+<canvas id="myCanvas" height="100" ; width="1000" style="border: solid 1px black;">Your browser does not support canvas.</canvas>
+</center>
+</p>
+
+<p>
+The main point I want to illustrate is that eigenvalues tend to avoid each other.
+If the matrix is n by n, you have n(n+1)/2 matrix elements to play with, and only n eigenvalues, and yet it is tricky to get two eigenvalues to come out to be equal.
+Sometimes two eigenvalues get really close and look like they're colliding, but if you look at the numerical values you'll see that what usually happens is that they just get close.
+</p>
+
+<H2>Random Matrices</H2>
+<p>
+This connects to the theory or random matrices.
+If the elements of the matrix are generated at random from a normal distribution then the distribution of the eigenvalues is similar to the positions in a thermodynamic ensemble of electrically charged particles in a quadratic potential.
+Because of the electric charge they will tend to repel each other. For example see <a href="https://arxiv.org/abs/1712.07903">Introduction to Random Matrices - Theory and Practice</a>.
+</p>
+
+<H2>Note</H2>
+<p>
+The algorithm used to compute the eigenvalues is the Jacobi method based on the pseudocode at <a href="https://en.wikipedia.org/wiki/Jacobi_eigenvalue_algorithm">Wikipedia</a>.
+I think that pseudocode is buggy - for example it will divide by zero for an identity matrix.
+So my code will probably occasionally divide by zero too.
+</p>
+
+<p>
+I've tested this code only on Safari and Chrome on OSX.
+</p>
 
 <SCRIPT>
 
@@ -276,21 +326,18 @@ n = 8
 //jacobi(S);
 
 function displayEigenvalues(e) {
-    result = document.getElementById("eigs")
-    t = ""
-    for (i = 0; i < n; ++i) {
-        t = t+e[i].toFixed(digits) + " ";
-    }
-    result.textContent = t;
-
     canvas = document.getElementById("myCanvas");
     var ctx = canvas.getContext("2d");
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     for (i = 0; i < n; ++i) {
         ctx.beginPath();
-        ctx.lineTo(500+100*e[i],50);
-        ctx.lineTo(500+100*e[i],150);
+        ctx.lineTo(500+200*e[i],15);
+        ctx.lineTo(500+200*e[i],85);
         ctx.stroke();
+    }
+
+    for (i = 0; i < n; ++i) {
+        document.getElementById("e"+i).textContent = e[i].toFixed(digits);
     }
 }
 
@@ -328,9 +375,8 @@ function handleDown(ii, jj, elem) {
     }
 }
 
-m = document.getElementById("matrix")
-
 function createMatrix(n) {
+    var m = document.getElementById("matrix");
     var S = makeMatrix(n);
     for (var i = 0; i < n; ++i) {
         var tr = document.createElement("tr");
@@ -350,7 +396,6 @@ function createMatrix(n) {
             td.id = name
             var txt = document.createTextNode(x.toFixed(digits));
 
-
             td.appendChild(txt);
             tr.appendChild(td);
 
@@ -363,12 +408,29 @@ function createMatrix(n) {
     return S;
 }
 
+function createEigenvalues(n, e) {
+    var m = document.getElementById("eigenvalues");
+    var tr = document.createElement("tr");
+    for (i = 0; i < n; ++i) {
+        var td = document.createElement("td");
+        name = "e"+i
+        td.id = name
+        var txt = document.createTextNode(e[i].toFixed(digits));
+
+        td.appendChild(txt);
+        tr.appendChild(td);
+    }
+
+    m.appendChild(tr);
+}
+
 document.onselectstart = function() {
     return false;
 }
 
 S = createMatrix(n);
 e = jacobi(S);
+createEigenvalues(n, e)
 displayEigenvalues(e);
 
 </SCRIPT>
