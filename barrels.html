@@ -481,10 +481,10 @@ function drawAll() {
     pipes.map(drawPipe)
     Array.from(barrels.entries()).map(drawBarrel)
 
-    drawText(ctx, "Goal: get "+goal+" into top left barrel", 125, 100, 20, "black")
+    drawText(ctx, "Goal: get "+goal+" into top left barrel.", 125, 100, 20, "black")
 
     console.log(barrels[0].fill, goal)
-    if (barrels[0].fill >= goal-0.1) {
+    if (barrels[0].fill >= goal-0.0001) {
         drawSuccess()
     }
 }
