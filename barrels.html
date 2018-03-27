@@ -467,6 +467,7 @@ canvas.onclick = function(event) {
             ctx.fillRect(0, 0, canvas.width, canvas.height)
             drawAll()
 
+            clearInterval(timer)
             timer = setInterval(redraw, 30)
             count = 20
 
@@ -481,7 +482,7 @@ function drawAll() {
     pipes.map(drawPipe)
     Array.from(barrels.entries()).map(drawBarrel)
 
-    drawText(ctx, "Goal: get "+goal+" into top left barrel.", 125, 100, 20, "black")
+    drawText(ctx, "Goal: get "+goal+" into leftmost barrel.", 125, 100, 20, "black")
 
     console.log(barrels[0].fill, goal)
     console.log(count)
@@ -498,6 +499,7 @@ function redraw(j) {
     ctx.clearRect(0, 0, canvasWidth, canvasHeight)
     ctx.fillStyle = backgroundColor
     ctx.fillRect(0, 0, canvas.width, canvas.height)
+    console.log("redraw")
     drawAll()
 
     --count
