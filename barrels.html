@@ -177,24 +177,30 @@ function drawSuccess() {
     drawText(ctx, label, x+0.5*(-extent.width), y-15, 72, "#4040ff")
 }
 
-function drawBarrel(entry) {
-    var i = entry[0]
-    var barrel = entry[1]
-    var midx = barrel.x+0.5*barrelWidth
-    var boty = barrel.y+barrelHeight
-    var amount = barrel.current*barrelHeight
-    var level = boty-amount
+class Barrel {
+    constructor(x, y, fill, current) {
+        this.x = x
+        this. y = y
+        this.fill = fill
+        this.current = current
+    }
+    drawBarrel(i) {
+        var midx = this.x+0.5*barrelWidth
+        var boty = this.y+barrelHeight
+        var amount = this.current*barrelHeight
+        var level = boty-amount
 
-    ctx.save()
-    ctx.shadowBlur = 10
-    ctx.shadowColor = "#404040"
-    ctx.shadowOffsetX = -3
-    ctx.shadowOffsetY = 0
-    barrelBackground(ctx, midx, boty, barrel)
-    ctx.restore()
-    barrelContents(ctx, midx, boty, barrel, amount, level)
-    barrelOutline(ctx, midx, boty, barrel, level)
-    barrelLabel(ctx, i, barrel)
+        ctx.save()
+        ctx.shadowBlur = 10
+        ctx.shadowColor = "#404040"
+        ctx.shadowOffsetX = -3
+        ctx.shadowOffsetY = 0
+        barrelBackground(ctx, midx, boty, this)
+        ctx.restore()
+        barrelContents(ctx, midx, boty, this, amount, level)
+        barrelOutline(ctx, midx, boty, this, level)
+        barrelLabel(ctx, i, this)
+    }
 }
 
 function checkPointInTap(ex, ey, x, y) {
@@ -375,7 +381,8 @@ function setLevel(i) {
     var level = levels[i]
 
     pipes = level.pipes.map(pipe => Object.create(pipe)) 
-    barrels = level.barrels.map(barrel => Object.create(barrel))
+    barrels = level.barrels.map(barrel =>
+        new Barrel(barrel.x, barrel.y, barrel.fill, barrel.current))
     goal = level.goal
 
     nbarrels = barrels.length
@@ -480,7 +487,7 @@ function drawAll() {
     ctx.fillStyle = backgroundColor
     ctx.fillRect(0, 0, canvas.width, canvas.height)
     pipes.map(drawPipe)
-    Array.from(barrels.entries()).map(drawBarrel)
+    Array.from(barrels.entries()).map(e => e[1].drawBarrel(e[0]))
 
     drawText(ctx, "Goal: get "+goal+" into leftmost barrel.", 125, 100, 20, "black")
 
