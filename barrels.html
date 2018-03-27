@@ -71,57 +71,6 @@ function ellipticalArc(ctx, x, y, w, h, start, end, move = true) {
     }
 }
 
-function barrelBackground(ctx, midx, boty, barrel) {
-    ctx.beginPath()
-    ctx.fillStyle = "white"
-    ellipticalArc(ctx, midx, boty, 0.5*barrelWidth, -10, Math.PI, 2*Math.PI, true)
-    ctx.lineTo(barrel.x+barrelWidth, barrel.y)
-    ellipticalArc(ctx, midx, barrel.y, 0.5*barrelWidth, -10, 0, Math.PI, false)
-    ctx.lineTo(barrel.x, boty)
-    ctx.fill();
-}
-
-function barrelGradient(ctx, barrel) {
-    var grad = ctx.createLinearGradient(barrel.x,0,barrel.x+barrelWidth,0);
-
-    grad.addColorStop(0,"#0000e0");
-    grad.addColorStop(0.5,"#0000f0");
-    grad.addColorStop(1,"#e0e0ff");
-
-    return grad
-}
-
-function barrelContents(ctx, midx, boty, barrel, amount, level) {
-    if (amount > 0) {
-        // Body. Wasteful.
-        ctx.beginPath()
-        ctx.fillStyle = barrelGradient(ctx, barrel)
-        ellipticalArc(ctx, midx, boty, 0.5*barrelWidth, -10, Math.PI, 2*Math.PI, true)
-        ctx.lineTo(barrel.x+barrelWidth, level)
-        ellipticalArc(ctx, midx, level, 0.5*barrelWidth, -10, 0, Math.PI, false)
-        ctx.lineTo(barrel.x, boty)
-        ctx.fill();
-
-        // Top
-        ctx.beginPath()
-        ctx.fillStyle="#2020f0"
-        ellipticalArc(ctx, midx, level, 0.5*barrelWidth, -10, 0, 2*Math.PI, true)
-        ctx.fill();
-    }
-}
-
-function barrelOutline(ctx, midx, boty, barrel, level) {
-    ctx.beginPath()
-    ctx.strokeStyle = "black"
-    ellipticalArc(ctx, midx, boty, 0.5*barrelWidth, -10, Math.PI, 2*Math.PI)
-    ctx.lineTo(barrel.x+barrelWidth, barrel.y)
-    ellipticalArc(ctx, midx, barrel.y, 0.5*barrelWidth, -10, 0, 2*Math.PI)
-    ellipticalArc(ctx, midx, level, 0.5*barrelWidth, -10, 0, 2*Math.PI)
-    ctx.moveTo(barrel.x, barrel.y)
-    ctx.lineTo(barrel.x, boty)
-    ctx.stroke();
-}
-
 function drawText(ctx, text, x, y, points, color) {
     ctx.beginPath()
     ctx.font = ""+points+"px Verdana";
@@ -129,25 +78,6 @@ function drawText(ctx, text, x, y, points, color) {
     ctx.fillStyle = color
     ctx.fillText(text, x, y)
     ctx.stroke()
-}
-
-function barrelLabel(ctx, i, barrel) {
-    //var label = ":"+i+" - "+Math.round(barrel.fill*1000)/1000+":"
-    var label = String(Math.round(barrel.fill*1000)/1000)
-    ctx.font = ""+15+"px Verdana";
-    var extent = ctx.measureText(label)
-
-    ctx.beginPath()
-    ctx.fillStyle = "black"
-    ctx.fillRect(barrel.x+0.5*(barrelWidth-extent.width)-1, barrel.y-30-1, extent.width+2, 18+2)
-    ctx.fill()
-
-    ctx.beginPath()
-    ctx.fillStyle = "white"
-    ctx.fillRect(barrel.x+0.5*(barrelWidth-extent.width), barrel.y-30, extent.width, 18)
-    ctx.fill()
-
-    drawText(ctx, label, barrel.x+0.5*(barrelWidth-extent.width), barrel.y-15, 15, "black")
 }
 
 function drawSuccess() {
@@ -184,7 +114,77 @@ class Barrel {
         this.current = fill
     }
 
-    drawBarrel(i) {
+    gradient(ctx) {
+        var grad = ctx.createLinearGradient(this.x,0,this.x+barrelWidth,0);
+
+        grad.addColorStop(0,"#0000e0");
+        grad.addColorStop(0.5,"#0000f0");
+        grad.addColorStop(1,"#e0e0ff");
+
+        return grad
+    }
+
+    background(ctx, midx, boty) {
+        ctx.beginPath()
+        ctx.fillStyle = "white"
+        ellipticalArc(ctx, midx, boty, 0.5*barrelWidth, -10, Math.PI, 2*Math.PI, true)
+        ctx.lineTo(this.x+barrelWidth, this.y)
+        ellipticalArc(ctx, midx, this.y, 0.5*barrelWidth, -10, 0, Math.PI, false)
+        ctx.lineTo(this.x, boty)
+        ctx.fill();
+    }
+
+    contents(ctx, midx, boty, amount, level) {
+        if (amount > 0) {
+            // Body. Wasteful.
+            ctx.beginPath()
+            ctx.fillStyle = this.gradient(ctx)
+            ellipticalArc(ctx, midx, boty, 0.5*barrelWidth, -10, Math.PI, 2*Math.PI, true)
+            ctx.lineTo(this.x+barrelWidth, level)
+            ellipticalArc(ctx, midx, level, 0.5*barrelWidth, -10, 0, Math.PI, false)
+            ctx.lineTo(this.x, boty)
+            ctx.fill();
+
+            // Top
+            ctx.beginPath()
+            ctx.fillStyle="#2020f0"
+            ellipticalArc(ctx, midx, level, 0.5*barrelWidth, -10, 0, 2*Math.PI, true)
+            ctx.fill();
+        }
+    }
+
+    label(ctx, i) {
+        //var label = ":"+i+" - "+Math.round(this.fill*1000)/1000+":"
+        var label = String(Math.round(this.fill*1000)/1000)
+        ctx.font = ""+15+"px Verdana";
+        var extent = ctx.measureText(label)
+
+        ctx.beginPath()
+        ctx.fillStyle = "black"
+        ctx.fillRect(this.x+0.5*(barrelWidth-extent.width)-1, this.y-30-1, extent.width+2, 18+2)
+        ctx.fill()
+
+        ctx.beginPath()
+        ctx.fillStyle = "white"
+        ctx.fillRect(this.x+0.5*(barrelWidth-extent.width), this.y-30, extent.width, 18)
+        ctx.fill()
+
+        drawText(ctx, label, this.x+0.5*(barrelWidth-extent.width), this.y-15, 15, "black")
+    }
+
+    outline(ctx, midx, boty, level) {
+        ctx.beginPath()
+        ctx.strokeStyle = "black"
+        ellipticalArc(ctx, midx, boty, 0.5*barrelWidth, -10, Math.PI, 2*Math.PI)
+        ctx.lineTo(this.x+barrelWidth, this.y)
+        ellipticalArc(ctx, midx, this.y, 0.5*barrelWidth, -10, 0, 2*Math.PI)
+        ellipticalArc(ctx, midx, level, 0.5*barrelWidth, -10, 0, 2*Math.PI)
+        ctx.moveTo(this.x, this.y)
+        ctx.lineTo(this.x, boty)
+        ctx.stroke();
+    }
+
+    draw(i) {
         var midx = this.x+0.5*barrelWidth
         var boty = this.y+barrelHeight
         var amount = this.current*barrelHeight
@@ -195,11 +195,11 @@ class Barrel {
         ctx.shadowColor = "#404040"
         ctx.shadowOffsetX = -3
         ctx.shadowOffsetY = 0
-        barrelBackground(ctx, midx, boty, this)
+        this.background(ctx, midx, boty)
         ctx.restore()
-        barrelContents(ctx, midx, boty, this, amount, level)
-        barrelOutline(ctx, midx, boty, this, level)
-        barrelLabel(ctx, i, this)
+        this.contents(ctx, midx, boty, amount, level)
+        this.outline(ctx, midx, boty, level)
+        this.label(ctx, i)
     }
 }
 
@@ -487,7 +487,7 @@ function drawAll() {
     ctx.fillStyle = backgroundColor
     ctx.fillRect(0, 0, canvas.width, canvas.height)
     pipes.map(drawPipe)
-    Array.from(barrels.entries()).map(e => e[1].drawBarrel(e[0]))
+    Array.from(barrels.entries()).map(e => e[1].draw(e[0]))
 
     drawText(ctx, "Goal: get "+goal+" into leftmost barrel.", 125, 100, 20, "black")
 
