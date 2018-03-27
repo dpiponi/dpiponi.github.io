@@ -1,0 +1,533 @@
+<head>
+<style>
+#canvas-container{
+  position: relative;
+  width: 800px;
+  height: 800px;
+}
+#BarrelCanvas {
+  position: absolute;
+  background-color:lightgrey
+}
+#resetButton {
+  position:absolute;
+  left:10%;
+  top:90%
+}
+#nextButton {
+  position:absolute;
+  left:20%;
+  top:90%
+}
+#previousButton {
+  position:absolute;
+  left:30%;
+  top:90%
+}
+
+</style>
+</head>
+
+<div id="canvas-container">
+ <canvas id='BarrelCanvas' width='800px' height='800px'></canvas>
+ <button id='resetButton' onclick="reset()">Reset</button> 
+ <button id='nextButton' onclick="next()">Next</button> 
+ <button id='previousButton' onclick="previous()">Previous</button> 
+</div>  
+
+<script>
+'use strict';
+
+var backgroundColor = "#709090"
+
+var canvasWidth = 800
+var canvasHeight = 800
+
+var tapWidth = 20
+var halfTapWidth = tapWidth/2
+
+var barrelWidth = 50
+var barrelHeight = 90
+
+function getParameterByName(name, url) {
+    if (!url) url = window.location.href;
+    name = name.replace(/[\[\]]/g, "\\$&");
+    var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+        results = regex.exec(url);
+    if (!results) return null;
+    if (!results[2]) return '';
+    return decodeURIComponent(results[2].replace(/\+/g, " "));
+}
+
+function ellipticalArc(ctx, x, y, w, h, start, end, move = true) {
+    var da = 0.05*(end-start)
+    var a = start
+    if (move) {
+        ctx.moveTo(x+Math.cos(a)*w, y+Math.sin(a)*h)
+    }
+    for (var i = 0; i < 20; ++i) {
+        a += da
+        ctx.lineTo(x+Math.cos(a)*w, y+Math.sin(a)*h)
+    }
+}
+
+function barrelBackground(ctx, midx, boty, barrel) {
+    ctx.beginPath()
+    ctx.fillStyle = "white"
+    ellipticalArc(ctx, midx, boty, 0.5*barrelWidth, -10, Math.PI, 2*Math.PI, true)
+    ctx.lineTo(barrel.x+barrelWidth, barrel.y)
+    ellipticalArc(ctx, midx, barrel.y, 0.5*barrelWidth, -10, 0, Math.PI, false)
+    ctx.lineTo(barrel.x, boty)
+    ctx.fill();
+}
+
+function barrelGradient(ctx, barrel) {
+    var grad = ctx.createLinearGradient(barrel.x,0,barrel.x+barrelWidth,0);
+
+    grad.addColorStop(0,"#0000e0");
+    grad.addColorStop(0.5,"#0000f0");
+    grad.addColorStop(1,"#e0e0ff");
+
+    return grad
+}
+
+function barrelContents(ctx, midx, boty, barrel, amount, level) {
+    if (amount > 0) {
+        // Body. Wasteful.
+        ctx.beginPath()
+        ctx.fillStyle = barrelGradient(ctx, barrel)
+        ellipticalArc(ctx, midx, boty, 0.5*barrelWidth, -10, Math.PI, 2*Math.PI, true)
+        ctx.lineTo(barrel.x+barrelWidth, level)
+        ellipticalArc(ctx, midx, level, 0.5*barrelWidth, -10, 0, Math.PI, false)
+        ctx.lineTo(barrel.x, boty)
+        ctx.fill();
+
+        // Top
+        ctx.beginPath()
+        ctx.fillStyle="#2020f0"
+        ellipticalArc(ctx, midx, level, 0.5*barrelWidth, -10, 0, 2*Math.PI, true)
+        ctx.fill();
+    }
+}
+
+function barrelOutline(ctx, midx, boty, barrel, level) {
+    ctx.beginPath()
+    ctx.strokeStyle = "black"
+    ellipticalArc(ctx, midx, boty, 0.5*barrelWidth, -10, Math.PI, 2*Math.PI)
+    ctx.lineTo(barrel.x+barrelWidth, barrel.y)
+    ellipticalArc(ctx, midx, barrel.y, 0.5*barrelWidth, -10, 0, 2*Math.PI)
+    ellipticalArc(ctx, midx, level, 0.5*barrelWidth, -10, 0, 2*Math.PI)
+    ctx.moveTo(barrel.x, barrel.y)
+    ctx.lineTo(barrel.x, boty)
+    ctx.stroke();
+}
+
+function drawText(ctx, text, x, y, points, color) {
+    ctx.beginPath()
+    ctx.font = ""+points+"px Verdana";
+    ctx.lineWidth = "1"
+    ctx.fillStyle = color
+    ctx.fillText(text, x, y)
+    ctx.stroke()
+}
+
+function barrelLabel(ctx, i, barrel) {
+    //var label = ":"+i+" - "+Math.round(barrel.fill*1000)/1000+":"
+    var label = String(Math.round(barrel.fill*1000)/1000)
+    ctx.font = ""+15+"px Verdana";
+    var extent = ctx.measureText(label)
+
+    ctx.beginPath()
+    ctx.fillStyle = "black"
+    ctx.fillRect(barrel.x+0.5*(barrelWidth-extent.width)-1, barrel.y-30-1, extent.width+2, 18+2)
+    ctx.fill()
+
+    ctx.beginPath()
+    ctx.fillStyle = "white"
+    ctx.fillRect(barrel.x+0.5*(barrelWidth-extent.width), barrel.y-30, extent.width, 18)
+    ctx.fill()
+
+    drawText(ctx, label, barrel.x+0.5*(barrelWidth-extent.width), barrel.y-15, 15, "black")
+}
+
+function drawSuccess() {
+    var label = "Success!"
+    ctx.font = ""+72+"px Verdana";
+    var extent = ctx.measureText(label)
+    console.log(extent)
+    var x = 400
+    var y = 400
+
+    ctx.save()
+    ctx.shadowBlur = 10
+    ctx.shadowColor = "#404040"
+    ctx.shadowOffsetX = -3
+    ctx.shadowOffsetY = 0
+    ctx.beginPath()
+    ctx.fillStyle = "#909090"
+    ctx.fillRect(x-0.5*extent.width-5, y-72-5, extent.width+10, 72+10)
+    ctx.fill()
+    ctx.restore()
+
+    ctx.beginPath()
+    ctx.fillStyle = backgroundColor
+    ctx.fillRect(x-0.5*extent.width, y-72, extent.width, 72)
+    ctx.fill()
+
+    drawText(ctx, label, x+0.5*(-extent.width), y-15, 72, "#4040ff")
+}
+
+function drawBarrel(entry) {
+    var i = entry[0]
+    var barrel = entry[1]
+    var midx = barrel.x+0.5*barrelWidth
+    var boty = barrel.y+barrelHeight
+    var amount = barrel.current*barrelHeight
+    var level = boty-amount
+
+    ctx.save()
+    ctx.shadowBlur = 10
+    ctx.shadowColor = "#404040"
+    ctx.shadowOffsetX = -3
+    ctx.shadowOffsetY = 0
+    barrelBackground(ctx, midx, boty, barrel)
+    ctx.restore()
+    barrelContents(ctx, midx, boty, barrel, amount, level)
+    barrelOutline(ctx, midx, boty, barrel, level)
+    barrelLabel(ctx, i, barrel)
+}
+
+function checkPointInTap(ex, ey, x, y) {
+    return (ex-x)*(ex-x)+(ey-y)*(ey-y) < halfTapWidth*halfTapWidth
+}
+
+function tapBackground(ctx, x, y, open) {
+    ctx.beginPath()
+    ctx.fillStyle = open ? "#a0a0ff" : "#f0f0ff"
+    ctx.arc(x, y, halfTapWidth, 0, 2*Math.PI)
+    ctx.fill()
+}
+
+function tapOutline(ctx, x, y) {
+    ctx.beginPath()
+    ctx.arc(x, y, halfTapWidth, 0, 2*Math.PI)
+    ctx.lineWidth = "1"
+    ctx.strokeStyle = "black"
+    ctx.stroke()
+}
+
+function tapState(ctx, x, y, open) {
+    ctx.beginPath()
+    ctx.font = "16px Verdana";
+    ctx.lineWidth = "1"
+    ctx.fillStyle = "black"
+    ctx.fillText(open ? "1" : "0", x-5, y+6)
+    ctx.stroke()
+}
+
+function drawTap(x, y, open) {
+    tapBackground(ctx, x, y, open)
+    tapOutline(ctx, x, y)
+}
+
+function drawPipePart(ctx, fx, fy, tx, ty, width, style) {
+    ctx.beginPath()
+    ctx.lineWidth = width
+    ctx.strokeStyle = style
+    ctx.lineCap = "round"
+    ctx.moveTo(fx, fy)
+    ctx.lineTo(tx, ty)
+    ctx.stroke()
+}
+
+function drawPipe(pipe) {
+    var barrel0 = barrels[pipe.from]
+    var barrel1 = barrels[pipe.to]
+
+    var fx = barrel0.x+0.5*barrelWidth
+    var fy = barrel0.y+barrelHeight
+    var tx = barrel1.x+0.5*barrelWidth
+    var ty = barrel1.y+barrelHeight
+
+    ctx.save()
+    ctx.shadowBlur = 5
+    ctx.shadowColor = "#202020"
+    ctx.shadowOffsetX = -1
+    ctx.shadowOffsetY = 0
+    drawPipePart(ctx, fx, fy, tx, ty, "10", backgroundColor)
+    ctx.restore()
+    drawPipePart(ctx, fx, fy, tx, ty, "8", "black")
+    drawPipePart(ctx, fx, fy, tx, ty, "6",
+        barrel0.fill > 0 && barrel1.fill > 0 && pipe.open ? "blue" : "white")
+
+    var pos = pipe.pos
+    drawTap((1-pos)*fx+pos*tx, (1-pos)*fy+pos*ty, pipe.open)
+}
+
+var levels = [
+        // trivial
+        {
+        goal: 0.5,
+
+        barrels: [
+            { x: 100, y:300, fill:0.0, current:0.0 },
+            { x: 580, y:300, fill:1.0, current:1.0 }
+        ],
+
+        pipes: [
+            {from:0, to:1, open:false, pos:0.5},
+        ]
+        },
+        
+        // Chain of 2
+        {
+        goal: 0.5,
+
+        barrels: [
+            { x: 100, y:300, fill:0.0, current:0.0 },
+            { x: 350, y:300, fill:0.5, current:0.5 },
+            { x: 600, y:300, fill:1.0, current:1.0 }
+        ],
+
+        pipes: [
+            {from:0, to:1, open:false, pos:0.5},
+            {from:1, to:2, open:false, pos:0.5}
+        ]
+        },
+
+        // Fork of 2
+        {
+        goal: 0.625,
+
+        barrels: [
+            { x: 100, y:300, fill:0.0, current:0.0 },
+            { x: 600, y:100, fill:0.5, current:0.5 },
+            { x: 600, y:500, fill:1.0, current:1.0 }
+        ],
+
+        pipes: [
+            {from:0, to:1, open:false, pos:0.5},
+            {from:0, to:2, open:false, pos:0.5}
+        ]
+        },
+
+        // Recursive fork
+        {
+        goal: 0.25,
+
+        barrels: [
+            { x: 100, y:350, fill:0.0, current:0.0 },
+                { x: 350, y:200, fill:0.1, current:0.1 },
+                    { x: 600, y:100, fill:0.3, current:0.3 },
+                    { x: 600, y:250, fill:0.3, current:0.2 },
+                { x: 350, y:500, fill:0.2, current:0.2 },
+                    { x: 600, y:450, fill:0.3, current:0.3 },
+                    { x: 600, y:600, fill:0.5, current:0.5 },
+        ],
+
+        pipes: [
+            {from:0, to:1, open:false, pos:0.5},
+            {from:1, to:2, open:false, pos:0.5},
+            {from:1, to:3, open:false, pos:0.5},
+            {from:0, to:4, open:false, pos:0.5},
+            {from:4, to:5, open:false, pos:0.5},
+            {from:4, to:6, open:false, pos:0.5}
+        ]
+        },
+
+        // slightly tricky
+        {
+        goal: 0.485,
+
+        barrels: [
+            { x: 30, y:50, fill:0.0, current:0.0 },
+            { x: 510, y:50, fill:0.1, current:0.1 },
+            { x: 100+30, y:550, fill:0.2, current:0.2 },
+            { x: 200+210, y:250, fill:0.3, current:0.3 },
+            { x: 200+30, y:450, fill:0.2, current:0.2 },
+            { x: 200+210, y:400, fill:0.25, current:0.25 },
+            { x: 200+410, y:450, fill:1.0, current:1.0 }
+        ],
+
+        pipes: [
+            {from:0, to:1, open:false, pos:0.5},
+            {from:0, to:2, open:false, pos:0.5},
+            {from:0, to:4, open:false, pos:0.5},
+            {from:1, to:3, open:false, pos:0.5},
+            {from:1, to:6, open:false, pos:0.5},
+            {from:2, to:6, open:false, pos:0.5},
+            {from:3, to:4, open:false, pos:0.5},
+            {from:3, to:6, open:false, pos:0.5},
+            {from:4, to:5, open:false, pos:0.5},
+            {from:4, to:6, open:false, pos:0.5},
+            {from:5, to:6, open:false, pos:0.5}
+        ]
+    }
+]
+
+var pipes, barrels, goal, nbarrels
+var currentLevel = getParameterByName('level')
+if (!currentLevel) {
+    currentLevel = 0
+}
+
+function setLevel(i) {
+    var level = levels[i]
+
+    pipes = level.pipes.map(pipe => Object.create(pipe)) 
+    barrels = level.barrels.map(barrel => Object.create(barrel))
+    goal = level.goal
+
+    nbarrels = barrels.length
+}
+
+function neighboursOf(pipes, i) {
+    var mask = Array(nbarrels).fill(false);
+    pipes.map(function (pipe) {
+        if (pipe.open && pipe.from == i) {
+            mask[pipe.to] = true
+        }
+        if (pipe.open && pipe.to == i) {
+            mask[pipe.from] = true
+        }
+    })
+    return mask
+}
+
+// Naive algorithm. Just keep adding neighbours.
+function connectedComponent(pipes, i) {
+    var mask = Array(nbarrels).fill(false);
+    mask[i] = true
+
+    while (true) {
+        // Count how much work we did this iteration
+        var count = 0
+        for (var j = 0; j < nbarrels; ++j) {
+            if (mask[j]) {
+                var nmask = neighboursOf(pipes, j)
+                for (var k = 0; k < nbarrels; ++k) {
+                    count += nmask[k] && !mask[k] ? 1 : 0
+                    mask[k] = mask[k] || nmask[k]
+                }
+            }
+        }
+        if (count == 0) {
+            return mask
+        }
+    }
+}
+
+function connectedComponents(pipes) {
+    var components = []
+
+    // boolean array of barrels that need processing
+    var mask = Array(nbarrels).fill(true);
+    for (var i = 0; i < nbarrels; ++i) {
+        if (mask[i]) {
+            var cmask = connectedComponent(pipes, i)
+            var component = []
+            for (var j = 0; j < nbarrels; ++j) {
+                if (cmask[j]) {
+                    component.push(j)
+                    mask[j] = false
+                }
+            }
+            components.push(component)
+        }
+    }
+    return components
+}
+
+function updateLevels(barrels, pipes) {
+    connectedComponents(pipes).map(function (component) {
+        var subBarrels = component.map(i => barrels[i])
+        var total = subBarrels.reduce((a, b) => a+b.fill, 0)
+        subBarrels.map(barrel => barrel.fill = total/component.length)
+    })
+}
+
+var canvas = document.getElementById("BarrelCanvas");
+var ctx = canvas.getContext("2d");
+var timer
+var count
+
+canvas.onclick = function(event) {
+    pipes.map(function (pipe) {
+        var barrel0 = barrels[pipe.from]
+        var barrel1 = barrels[pipe.to]
+
+        var pos = pipe.pos
+        var tapX = (1-pos)*barrel0.x+pos*barrel1.x+0.5*barrelWidth
+        var tapY = (1-pos)*barrel0.y+pos*barrel1.y+barrelHeight
+        if (checkPointInTap(event.offsetX, event.offsetY, tapX, tapY)) {
+            pipe.open = !pipe.open
+            updateLevels(barrels, pipes)
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight)
+            ctx.fillStyle = backgroundColor
+            ctx.fillRect(0, 0, canvas.width, canvas.height)
+            drawAll()
+
+            timer = setInterval(redraw, 30)
+            count = 20
+
+            return false
+        }
+    })
+}
+
+function drawAll() {
+    ctx.fillStyle = backgroundColor
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    pipes.map(drawPipe)
+    Array.from(barrels.entries()).map(drawBarrel)
+
+    drawText(ctx, "Goal: get "+goal+" into top left barrel", 125, 100, 20, "black")
+
+    if (barrels[0].fill >= goal-1e-7) {
+        drawSuccess()
+    }
+}
+
+function redraw(j) {
+    barrels.map(function (barrel) {
+        barrel.current = count > 0 ? 0.75*barrel.current+0.25*barrel.fill : barrel.fill
+    })
+
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight)
+    ctx.fillStyle = backgroundColor
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    drawAll()
+
+    --count
+    if (count <= 0) {
+        clearInterval(timer)
+    }
+}
+
+function reset() {
+    setLevel(currentLevel)
+    drawAll()
+}
+
+function next() {
+    ++currentLevel
+    if (currentLevel >= levels.length) {
+        currentLevel = levels.length-1
+    }
+    setLevel(currentLevel)
+    drawAll()
+}
+
+function previous() {
+    --currentLevel
+    if (currentLevel < 0) {
+        currentLevel = 0
+    }
+    setLevel(currentLevel)
+    drawAll()
+}
+
+setLevel(currentLevel)
+
+drawAll()
+</script>
