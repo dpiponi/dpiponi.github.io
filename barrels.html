@@ -154,7 +154,6 @@ function drawSuccess() {
     var label = "Success!"
     ctx.font = ""+72+"px Verdana";
     var extent = ctx.measureText(label)
-    console.log(extent)
     var x = 400
     var y = 400
 
@@ -178,12 +177,13 @@ function drawSuccess() {
 }
 
 class Barrel {
-    constructor(x, y, fill, current) {
+    constructor(x, y, fill) {
         this.x = x
         this. y = y
         this.fill = fill
-        this.current = current
+        this.current = fill
     }
+
     drawBarrel(i) {
         var midx = this.x+0.5*barrelWidth
         var boty = this.y+barrelHeight
@@ -276,8 +276,8 @@ var levels = [
         goal: 0.5,
 
         barrels: [
-            { x: 100, y:300, fill:0.0, current:0.0 },
-            { x: 580, y:300, fill:1.0, current:1.0 }
+            { x: 100, y:300, fill:0.0 },
+            { x: 580, y:300, fill:1.0 }
         ],
 
         pipes: [
@@ -290,9 +290,9 @@ var levels = [
         goal: 0.5,
 
         barrels: [
-            { x: 100, y:300, fill:0.0, current:0.0 },
-            { x: 350, y:300, fill:0.5, current:0.5 },
-            { x: 600, y:300, fill:1.0, current:1.0 }
+            { x: 100, y:300, fill:0.0 },
+            { x: 350, y:300, fill:0.5 },
+            { x: 600, y:300, fill:1.0 }
         ],
 
         pipes: [
@@ -306,9 +306,9 @@ var levels = [
         goal: 0.625,
 
         barrels: [
-            { x: 100, y:300, fill:0.0, current:0.0 },
-            { x: 600, y:100, fill:0.5, current:0.5 },
-            { x: 600, y:500, fill:1.0, current:1.0 }
+            { x: 100, y:300, fill:0.0 },
+            { x: 600, y:100, fill:0.5 },
+            { x: 600, y:500, fill:1.0 }
         ],
 
         pipes: [
@@ -322,13 +322,13 @@ var levels = [
         goal: 0.388,
 
         barrels: [
-            { x: 100, y:350, fill:0.0, current:0.0 },
-                { x: 350, y:200, fill:0.4, current:0.4 },
-                    { x: 600, y:100, fill:0.5, current:0.5 },
-                    { x: 600, y:250, fill:0.4, current:0.4 },
-                { x: 350, y:500, fill:0.0, current:0.0 },
-                    { x: 600, y:450, fill:0.3, current:0.3 },
-                    { x: 600, y:600, fill:0.4, current:0.4 },
+            { x: 100, y:350, fill:0.0 },
+                { x: 350, y:200, fill:0.4 },
+                    { x: 600, y:100, fill:0.5 },
+                    { x: 600, y:250, fill:0.4 },
+                { x: 350, y:500, fill:0.0 },
+                    { x: 600, y:450, fill:0.3 },
+                    { x: 600, y:600, fill:0.4 },
         ],
 
         pipes: [
@@ -346,13 +346,13 @@ var levels = [
         goal: 0.485,
 
         barrels: [
-            { x: 30, y:50, fill:0.0, current:0.0 },
-            { x: 510, y:50, fill:0.1, current:0.1 },
-            { x: 100+30, y:550, fill:0.2, current:0.2 },
-            { x: 200+210, y:250, fill:0.3, current:0.3 },
-            { x: 200+30, y:450, fill:0.2, current:0.2 },
-            { x: 200+210, y:400, fill:0.25, current:0.25 },
-            { x: 200+410, y:450, fill:1.0, current:1.0 }
+            { x: 30, y:50, fill:0.0 },
+            { x: 510, y:50, fill:0.1 },
+            { x: 100+30, y:550, fill:0.2 },
+            { x: 200+210, y:250, fill:0.3 },
+            { x: 200+30, y:450, fill:0.2 },
+            { x: 200+210, y:400, fill:0.25 },
+            { x: 200+410, y:450, fill:1.0 }
         ],
 
         pipes: [
@@ -382,7 +382,7 @@ function setLevel(i) {
 
     pipes = level.pipes.map(pipe => Object.create(pipe)) 
     barrels = level.barrels.map(barrel =>
-        new Barrel(barrel.x, barrel.y, barrel.fill, barrel.current))
+        new Barrel(barrel.x, barrel.y, barrel.fill))
     goal = level.goal
 
     nbarrels = barrels.length
@@ -491,8 +491,6 @@ function drawAll() {
 
     drawText(ctx, "Goal: get "+goal+" into leftmost barrel.", 125, 100, 20, "black")
 
-    console.log(barrels[0].fill, goal)
-    console.log(count)
     if (barrels[0].fill >= goal-1e-5) {
         drawSuccess()
     }
@@ -506,7 +504,6 @@ function redraw(j) {
     ctx.clearRect(0, 0, canvasWidth, canvasHeight)
     ctx.fillStyle = backgroundColor
     ctx.fillRect(0, 0, canvas.width, canvas.height)
-    console.log("redraw")
     drawAll()
 
     --count
