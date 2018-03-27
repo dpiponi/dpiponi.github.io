@@ -484,6 +484,7 @@ function drawAll() {
     drawText(ctx, "Goal: get "+goal+" into top left barrel", 125, 100, 20, "black")
 
     console.log(barrels[0].fill, goal)
+    console.log(count)
     if (barrels[0].fill >= goal-1e-5) {
         drawSuccess()
     }
