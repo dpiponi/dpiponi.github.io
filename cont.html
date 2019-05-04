@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>How to slice your code into continuations</title>
+  <style type="text/css">
+      code{white-space: pre-wrap;}
+      span.smallcaps{font-variant: small-caps;}
+      span.underline{text-decoration: underline;}
+      div.column{display: inline-block; vertical-align: top; width: 50%;}
+  </style>
+  <style type="text/css">
+a.sourceLine { display: inline-block; line-height: 1.25; }
+a.sourceLine { pointer-events: none; color: inherit; text-decoration: inherit; }
+a.sourceLine:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode { white-space: pre; position: relative; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+code.sourceCode { white-space: pre-wrap; }
+a.sourceLine { text-indent: -1em; padding-left: 1em; }
+}
+pre.numberSource a.sourceLine
+  { position: relative; left: -4em; }
+pre.numberSource a.sourceLine::before
+  { content: attr(data-line-number);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; pointer-events: all; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {  }
+@media screen {
+a.sourceLine::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+  <link rel="stylesheet" href="pandoc.css" />
+  <link rel="stylesheet" href="pandoc.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.2/MathJax.js?config=TeX-AMS_CHTML-full" type="text/javascript"></script>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">How to slice your code into continuations</h1>
+</header>
+<nav id="TOC">
+<ul>
+<li><a href="#introduction">Introduction</a></li>
+<li><a href="#overloading-assignment">Overloading assignment</a></li>
+<li><a href="#list-comprehension">List Comprehension</a></li>
+<li><a href="#some-more-detail">Some more detail</a></li>
+<li><a href="#back-to-list-comprehension">Back to list comprehension</a></li>
+<li><a href="#er...monads">Er...monads</a></li>
+<li><a href="#another-application">Another application</a></li>
+<li><a href="#final-thoughts">Final thoughts</a></li>
+</ul>
+</nav>
+<h2 id="introduction">Introduction</h2>
+<p>Here's a fragment of code that with minor syntax changes could be in just about any popular programming language:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb1-1" data-line-number="1">  a <span class="fu">=</span> <span class="dv">1</span><span class="fu">/</span>(<span class="dv">1</span><span class="fu">+</span><span class="dv">7</span>)</a>
+<a class="sourceLine" id="cb1-2" data-line-number="2">  b <span class="fu">=</span> <span class="dv">2</span><span class="fu">*</span>a<span class="fu">+</span>sqrt(a)</a>
+<a class="sourceLine" id="cb1-3" data-line-number="3">  c <span class="fu">=</span> atan(b)<span class="fu">/</span>(<span class="dv">1</span><span class="fu">+</span>c)</a>
+<a class="sourceLine" id="cb1-4" data-line-number="4">  return c<span class="fu">+</span><span class="dv">2</span><span class="fu">*</span>d</a></code></pre></div>
+<p>(Nothing I want to say here is specific to any particular programming language so I'm going to write examples in a vaguely Python-like pseudocode.)</p>
+<p>Conceptually how might you split that into two? When I put on my imperative programmer hat I see the assignments as actions that have the side effect of creating or updating variables. So a natural place to make a break is between two lines.</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb2-1" data-line-number="1">  a <span class="fu">=</span> <span class="dv">1</span><span class="fu">/</span>(<span class="dv">1</span><span class="fu">+</span><span class="dv">7</span>)</a>
+<a class="sourceLine" id="cb2-2" data-line-number="2">  b <span class="fu">=</span> <span class="dv">2</span><span class="fu">*</span>a<span class="fu">+</span>sqrt(a)</a>
+<a class="sourceLine" id="cb2-3" data-line-number="3">  <span class="fu">...</span></a></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb3-1" data-line-number="1">  <span class="fu">...</span></a>
+<a class="sourceLine" id="cb3-2" data-line-number="2">  c <span class="fu">=</span> atan(b)<span class="fu">/</span>(<span class="dv">1</span><span class="fu">+</span>c)</a>
+<a class="sourceLine" id="cb3-3" data-line-number="3">  return c<span class="fu">+</span><span class="dv">2</span><span class="fu">*</span>d</a></code></pre></div>
+<p>But when I put on my functional programmer hat I see a different way to split it. I view it as something like this</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb4-1" data-line-number="1">  a <span class="fu">=</span> <span class="dv">1</span><span class="fu">/</span>(<span class="dv">1</span><span class="fu">+</span><span class="dv">7</span>)</a>
+<a class="sourceLine" id="cb4-2" data-line-number="2">  <span class="fu">...</span> <span class="dv">2</span><span class="fu">*</span>a<span class="fu">+</span>sqrt(a)</a></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb5-1" data-line-number="1">  <span class="fu">...</span></a>
+<a class="sourceLine" id="cb5-2" data-line-number="2">  lambda b<span class="fu">:</span></a>
+<a class="sourceLine" id="cb5-3" data-line-number="3">    c <span class="fu">=</span> atan(b)<span class="fu">/</span>(<span class="dv">1</span><span class="fu">+</span>c)</a>
+<a class="sourceLine" id="cb5-4" data-line-number="4">    return c<span class="fu">+</span><span class="dv">2</span><span class="fu">*</span>d</a></code></pre></div>
+<p>where the lambda expression in the second part is applied to the expression at the end of the first part. Instead of splitting up the code as one computation performing an action followed by another, it can be seen as a computation with a value that has a function applied to it. In this context, such a function is called a <em>continuation</em>.</p>
+<p>I'd like to talk about how the second viewpoint has some nice applications.</p>
+<h2 id="overloading-assignment">Overloading assignment</h2>
+<p>Many languages come with overloadable syntax. For example, in C++ we can overload <code>operator[]</code> and <code>operator==</code>, in Python we can overload functions like <code>__add__</code>, and in Haskell we can defines new instances for type classes like <code>Num</code>.</p>
+<p>In my examples above I used the assignment operator <code>=</code>. How might we overload this &quot;operator&quot;? In C++, say, we can overload <code>operator=</code>. This fits with the first concept in the introduction: for example it might be used to implement an optimised version of assignment that copies some data from one place to another and whose operation is completely finished before we get to the next statement.</p>
+<p>But the second viewpoint above suggests another way to, in some sense, overload <code>=</code>.</p>
+<h2 id="list-comprehension">List Comprehension</h2>
+<p>Some languages support blocks of code that have an assignment-like operator where assigment has a different meaning from the usual. Consider the Python code</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode python"><code class="sourceCode python"><a class="sourceLine" id="cb6-1" data-line-number="1">  [A <span class="cf">for</span> b <span class="kw">in</span> C</a>
+<a class="sourceLine" id="cb6-2" data-line-number="2">     <span class="cf">for</span> d <span class="kw">in</span> E</a>
+<a class="sourceLine" id="cb6-3" data-line-number="3">     <span class="cf">for</span> e <span class="kw">in</span> F]</a></code></pre></div>
+<p>where I've used upper-case letters as metavariables that stand for more complex expressions.</p>
+<p>The sequence</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode python"><code class="sourceCode python"><a class="sourceLine" id="cb7-1" data-line-number="1">  <span class="cf">for</span> b <span class="kw">in</span> C</a>
+<a class="sourceLine" id="cb7-2" data-line-number="2">  <span class="cf">for</span> d <span class="kw">in</span> E</a>
+<a class="sourceLine" id="cb7-3" data-line-number="3">  <span class="cf">for</span> e <span class="kw">in</span> F</a></code></pre></div>
+<p>is a lot like a sequence of assignments. The difference between <code>for b in C</code> and <code>b = C</code> is merely syntactic and Python could probably have been designed to use a syntax like</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode python"><code class="sourceCode python"><a class="sourceLine" id="cb8-1" data-line-number="1">  [A <span class="cf">for</span> b <span class="op">=</span> C</a>
+<a class="sourceLine" id="cb8-2" data-line-number="2">         d <span class="op">=</span> E</a>
+<a class="sourceLine" id="cb8-3" data-line-number="3">         e <span class="op">=</span> F]</a></code></pre></div>
+<p>This suggests the possibility that if we enabled the overloading of <code>=</code> in the right way, it would allow us to implement list comprehension in a language that doesn't have explicit list comprehension support.</p>
+<h2 id="some-more-detail">Some more detail</h2>
+<p>Consider the fragment</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb9-1" data-line-number="1">  a <span class="fu">=</span> <span class="dt">A</span></a>
+<a class="sourceLine" id="cb9-2" data-line-number="2">  return <span class="dt">B</span></a></code></pre></div>
+<p>We can rewrite this as</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb10-1" data-line-number="1">  (lambda a<span class="fu">:</span> <span class="dt">B</span>)(<span class="dt">A</span>)</a></code></pre></div>
+<p>where I'm using upper case <code>A</code> and <code>B</code> to stand for expressions rather than as variables within our language. (So <code>B</code> may contain mentions of <code>a</code>.)</p>
+<p>Suppose the expression <code>A</code> has type <span class="math inline">\(X\)</span> and <code>B</code> has type <span class="math inline">\(Y\)</span>. Then the continuation has to accept arguments of type <span class="math inline">\(X\)</span> and return values of type <span class="math inline">\(Y\)</span>. So it has type <span class="math inline">\(X\rightarrow Y\)</span>. Even if we're using a language without static types it's useful to think of our functions in this way. In the continuation model we apply the continuation of type <span class="math inline">\(X\rightarrow Y\)</span> to an argument of type <span class="math inline">\(X\)</span> to get a <span class="math inline">\(Y\)</span>. We can think of this as an application of a higher order function, let's call it <code>eval</code>, that takes as argument both a continuation and an argument, applying the former to the latter. In effect, a computer program is a sequence of applications of <code>eval</code>. And that gives us a great place to insert overloading: allow users to define <code>eval</code>. This gives a lot of freedom to manipulate how a program executes. We don't have to simply apply the continuation directly to the &quot;argument&quot;, we can do all kinds of other things, including completely ignoring the continuation (which is what raising an exception does).</p>
+<p>Let's rewrite:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode python"><code class="sourceCode python"><a class="sourceLine" id="cb11-1" data-line-number="1">  b <span class="op">=</span> C</a>
+<a class="sourceLine" id="cb11-2" data-line-number="2">  e <span class="op">=</span> F</a>
+<a class="sourceLine" id="cb11-3" data-line-number="3">  <span class="cf">return</span> A</a></code></pre></div>
+<p>Do the last two lines first</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode python"><code class="sourceCode python"><a class="sourceLine" id="cb12-1" data-line-number="1">  b <span class="op">=</span> C</a>
+<a class="sourceLine" id="cb12-2" data-line-number="2">  <span class="cf">return</span> (<span class="kw">lambda</span> e: <span class="cf">return</span> A)(f)</a></code></pre></div>
+<p>and now the whole thing</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode python"><code class="sourceCode python"><a class="sourceLine" id="cb13-1" data-line-number="1">  <span class="cf">return</span> (<span class="kw">lambda</span> b: (<span class="kw">lambda</span> e: A)(F))(C)</a></code></pre></div>
+<p>And now we can rewrite it with <code>eval</code>:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode python"><code class="sourceCode python"><a class="sourceLine" id="cb14-1" data-line-number="1">  <span class="cf">return</span> <span class="bu">eval</span>(<span class="kw">lambda</span> b: <span class="bu">eval</span>(<span class="kw">lambda</span> e: A, F), C)</a></code></pre></div>
+<h2 id="back-to-list-comprehension">Back to list comprehension</h2>
+<p>Consider the meaning, in Python say, of</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode python"><code class="sourceCode python"><a class="sourceLine" id="cb15-1" data-line-number="1">  [A <span class="cf">for</span> b <span class="op">=</span> C</a>
+<a class="sourceLine" id="cb15-2" data-line-number="2">         e <span class="op">=</span> F]</a></code></pre></div>
+<p>typically <code>C</code> is a list (or an iterator that can yield elements one by one like a list). Consider the fragment</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode python"><code class="sourceCode python"><a class="sourceLine" id="cb16-1" data-line-number="1">         b <span class="op">=</span> ...    </a>
+<a class="sourceLine" id="cb16-2" data-line-number="2">         e <span class="op">=</span> F]</a></code></pre></div>
+<p>as a continuation. For list comprehension the intention isn't simply that the continuation is applied directly to <code>C</code>. We want it applied to each element of <code>C</code> in turn and then we want to collect the results. In other words, we need our continuation to be called many times. This is why the imperative style overloading I described above would be hard to use. It's functionality is delimited by the statement it's part of and it doesn't know about anything the continuation. You might guess that the way we might use it is to overload <code>eval</code> above with Python's <code>map</code> function that applies a function to every element of a list and collects the results in a list. So the code above might become:</p>
+<div class="sourceCode" id="cb17"><pre class="sourceCode python"><code class="sourceCode python"><a class="sourceLine" id="cb17-1" data-line-number="1">  <span class="bu">map</span>(<span class="kw">lambda</span> b: <span class="bu">map</span>(<span class="kw">lambda</span> e: A, F), C)</a></code></pre></div>
+<p>But that isn't quite right. If F is a list, and so is C, we end up making a list of lists rather than a list. We need to flatten everything out to a list again at the end. So instead of <code>map</code> we use <code>concatMap</code> defined as</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode python"><code class="sourceCode python"><a class="sourceLine" id="cb18-1" data-line-number="1">  <span class="kw">def</span> concatMap(f, x):</a>
+<a class="sourceLine" id="cb18-2" data-line-number="2">    <span class="cf">return</span> [a <span class="cf">for</span> y <span class="kw">in</span> x</a>
+<a class="sourceLine" id="cb18-3" data-line-number="3">              <span class="cf">for</span> a <span class="kw">in</span> f(y)]</a></code></pre></div>
+<p>We collect the elements of each <code>f(y)</code> into a list rather then collect the <code>f(y)</code>'s.</p>
+<p>We find that</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode python"><code class="sourceCode python"><a class="sourceLine" id="cb19-1" data-line-number="1">  concatMap(<span class="kw">lambda</span> b: concatMap(<span class="kw">lambda</span> e: [A], F), C)</a></code></pre></div>
+<p>does the job. (Note one little wrinkle, <code>concatMap</code> expects a list for the second argument so I replaced <code>A</code> with the single element list <code>[A]</code>.)</p>
+<p>We can try it on some real Python code. Start with this comprehension</p>
+<div class="sourceCode" id="cb20"><pre class="sourceCode python"><code class="sourceCode python"><a class="sourceLine" id="cb20-1" data-line-number="1">[e<span class="op">+</span><span class="dv">1</span> <span class="cf">for</span> b <span class="kw">in</span> [<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>]</a>
+<a class="sourceLine" id="cb20-2" data-line-number="2">     <span class="cf">for</span> e <span class="kw">in</span> [<span class="dv">10</span><span class="op">*</span>b, <span class="dv">100</span><span class="op">*</span>b]]</a></code></pre></div>
+<p>Using the rewrite method I sketched this becomes</p>
+<div class="sourceCode" id="cb21"><pre class="sourceCode python"><code class="sourceCode python"><a class="sourceLine" id="cb21-1" data-line-number="1"><span class="bu">print</span> [e<span class="op">+</span><span class="dv">1</span> <span class="cf">for</span> b <span class="kw">in</span> [<span class="dv">1</span>, <span class="dv">2</span>, <span class="dv">3</span>]</a>
+<a class="sourceLine" id="cb21-2" data-line-number="2">    ¦   ¦  <span class="cf">for</span> e <span class="kw">in</span> [<span class="dv">10</span><span class="op">*</span>b, <span class="dv">100</span><span class="op">*</span>b]]</a></code></pre></div>
+<p>You should get the same result.</p>
+<p>In other words, in a language that allows you to overload <code>eval</code>, you can implement list comprehension without having to make it a feature by modifying the original language.</p>
+<h2 id="er...monads">Er...monads</h2>
+<p>I wrote about an implementation of this kind of code rewrite many years ago at <a href="https://github.com/dpiponi/Monad-Python">Monad-Python</a> but I wrote about that speciifically as a way to implement monads in Python. I don't really want to mention monads today except to say that you can think of them as a disciplined form of overloading of <code>=</code> where the types of the continuation and its &quot;argument&quot; follow certain rules. I've also written about the connection between monads and continuations at <a href="https://www.schoolofhaskell.com/school/to-infinity-and-beyond/pick-of-the-week/the-mother-of-all-monads">The Mother of all Monads</a>.</p>
+<h2 id="another-application">Another application</h2>
+<p>Thinking about code as splitting into continuations and arguments is old. It's the first step towards continuation passing style which has long been used as an intermediate representation inside compilers. But people seem less familiar with it today even though it could probably usefully inform the design of programming languages. For example, in probability theory we often see notation like</p>
+<p>\( \begin{align*} \sigma &amp;\sim \textsf{Exponential}(\mu) \\ \nu &amp;\sim \textsf{Normal}(\mu, 1) \\ z &amp;\sim \textsf{Normal}(\nu, \sigma^2) \\ \end{align*} \)</p>
+<p>Like with assignments and list comprehension we have pairs of variable names and expressions. This can also be interpreted as an overloading of <code>=</code> by replacing <code>eval</code>. Very often with probabilistic languages we want to interpret the same block of code with different semantics. For example we might want to draw samples one moment and then compute a probability distribution function the next. An overloadable <code>eval</code> can enable this, as well as a multitude of other interpretations. Again see the probabilistic examples at <a href="https://github.com/dpiponi/Monad-Python">Monad-Python</a> for one approach to this.</p>
+<h2 id="final-thoughts">Final thoughts</h2>
+<p>Many people seem to write DSLs these days. My goal here was simply to encourage people who might not typically work in a functional style to think about how continuations might be useful in the design of their languages, even if it seems their language is imperative. Computer science is so big these days that the worlds of people who think in terms of continuations, and the worlds of people who don't, often fail to intersect.</p>
+<p>If you don't have an immediate application for continuation based slicing, thinking about sequences of assignments as chains of function applications can be illuminating. The rewriting I discuss above is essentially what the Haskell compiler performs when it meets <a href="https://en.wikibooks.org/wiki/Haskell/do_notation">do-notation</a>. (But see also [<a href="https://gitlab.haskell.org/ghc/ghc/wikis/applicative-do">https://gitlab.haskell.org/ghc/ghc/wikis/applicative-do</a> ApplicativeDo.)</p>
+<p>(Oh, and as a side-effect you can use this approach to pack more into <a href="http://blog.sigfpe.com/2008/09/on-writing-python-one-liners.html">a single line of Python</a> :)</p>
+</body>
+</html>
