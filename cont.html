@@ -435,7 +435,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <p>Here's a fragment of code that with minor syntax changes could be in just about any popular programming language:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb1-1" data-line-number="1">  a <span class="fu">=</span> <span class="dv">1</span><span class="fu">/</span>(<span class="dv">1</span><span class="fu">+</span><span class="dv">7</span>)</a>
 <a class="sourceLine" id="cb1-2" data-line-number="2">  b <span class="fu">=</span> <span class="dv">2</span><span class="fu">*</span>a<span class="fu">+</span>sqrt(a)</a>
-<a class="sourceLine" id="cb1-3" data-line-number="3">  c <span class="fu">=</span> atan(b)<span class="fu">/</span>(<span class="dv">1</span><span class="fu">+</span>c)</a>
+<a class="sourceLine" id="cb1-3" data-line-number="3">  c <span class="fu">=</span> atan(b)<span class="fu">/</span>(<span class="dv">1</span><span class="fu">+</span>b)</a>
 <a class="sourceLine" id="cb1-4" data-line-number="4">  return c<span class="fu">+</span><span class="dv">2</span><span class="fu">*</span>d</a></code></pre></div>
 <p>(Nothing I want to say here is specific to any particular programming language so I'm going to write examples in a vaguely Python-like pseudocode.)</p>
 <p>Conceptually how might you split that into two? When I put on my imperative programmer hat I see the assignments as actions that have the side effect of creating or updating variables. So a natural place to make a break is between two lines.</p>
@@ -443,14 +443,14 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <a class="sourceLine" id="cb2-2" data-line-number="2">  b <span class="fu">=</span> <span class="dv">2</span><span class="fu">*</span>a<span class="fu">+</span>sqrt(a)</a>
 <a class="sourceLine" id="cb2-3" data-line-number="3">  <span class="fu">...</span></a></code></pre></div>
 <div class="sourceCode" id="cb3"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb3-1" data-line-number="1">  <span class="fu">...</span></a>
-<a class="sourceLine" id="cb3-2" data-line-number="2">  c <span class="fu">=</span> atan(b)<span class="fu">/</span>(<span class="dv">1</span><span class="fu">+</span>c)</a>
+<a class="sourceLine" id="cb3-2" data-line-number="2">  c <span class="fu">=</span> atan(b)<span class="fu">/</span>(<span class="dv">1</span><span class="fu">+</span>b)</a>
 <a class="sourceLine" id="cb3-3" data-line-number="3">  return c<span class="fu">+</span><span class="dv">2</span><span class="fu">*</span>d</a></code></pre></div>
 <p>But when I put on my functional programmer hat I see a different way to split it. I view it as something like this</p>
 <div class="sourceCode" id="cb4"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb4-1" data-line-number="1">  a <span class="fu">=</span> <span class="dv">1</span><span class="fu">/</span>(<span class="dv">1</span><span class="fu">+</span><span class="dv">7</span>)</a>
 <a class="sourceLine" id="cb4-2" data-line-number="2">  <span class="fu">...</span> <span class="dv">2</span><span class="fu">*</span>a<span class="fu">+</span>sqrt(a)</a></code></pre></div>
 <div class="sourceCode" id="cb5"><pre class="sourceCode haskell"><code class="sourceCode haskell"><a class="sourceLine" id="cb5-1" data-line-number="1">  <span class="fu">...</span></a>
 <a class="sourceLine" id="cb5-2" data-line-number="2">  lambda b<span class="fu">:</span></a>
-<a class="sourceLine" id="cb5-3" data-line-number="3">    c <span class="fu">=</span> atan(b)<span class="fu">/</span>(<span class="dv">1</span><span class="fu">+</span>c)</a>
+<a class="sourceLine" id="cb5-3" data-line-number="3">    c <span class="fu">=</span> atan(b)<span class="fu">/</span>(<span class="dv">1</span><span class="fu">+</span>b)</a>
 <a class="sourceLine" id="cb5-4" data-line-number="4">    return c<span class="fu">+</span><span class="dv">2</span><span class="fu">*</span>d</a></code></pre></div>
 <p>where the lambda expression in the second part is applied to the expression at the end of the first part. Instead of splitting up the code as one computation performing an action followed by another, it can be seen as a computation with a value that has a function applied to it. In this context, such a function is called a <em>continuation</em>.</p>
 <p>I'd like to talk about how the second viewpoint has some nice applications.</p>
