@@ -78,7 +78,7 @@ Use this slider to control the frequency of the fundamental
 </p>
 <div>
   <input type="range" min="30" max="80" value="50" class="slider" id="sliderf">
-  Fundamental: <label id = "fred">50</label>
+  Fundamental: <label id = "fred">50</label>Hz
 </div>
 <hr>
 <p class="instrs">
@@ -132,10 +132,14 @@ Fourth overtone
 
 <hr>
 I suggest setting the fundamental to around 50 Hz and switching on only the first overtone.
-If you listen with
+When I now switch on the second overtone my subjective experience is that not only has a higher frequency tone has been added but also that a lower frequency tone is present too.
+The effect is going to depend on your playback hardware.
+Obviously you won't hear an effect unless your speakers can actually play the first and second overtone.
 
+<HR>
 <canvas width="800px" height="200px" style="border:1px" id="graph"></canvas>
 This is what the signal might look like depending on what the exact phase for each frequency is.
+<HR>
 </content>
 
 
@@ -183,6 +187,7 @@ function main() {
 
     var slider = document.getElementById("slider" + i)
     slider.i = i
+    slider.value = 50.0
     slider.oninput = function() {
         i = this.i
         osc = oscs[i]
@@ -197,6 +202,7 @@ function main() {
 
     var button = document.getElementById("button" + i);
     button.i = i
+    button.checked = false
     buttons.push(button)
     button.onclick = function() {
         i = this.i
@@ -220,6 +226,7 @@ function main() {
     }
     drawGraph()
   }
+  drawGraph()
 }
 
 document.getElementById('start').addEventListener('click', function() {
