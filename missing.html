@@ -1,0 +1,230 @@
+<html>
+<head>
+<style>
+.start {
+    background-color:#44c767;
+    -moz-border-radius:28px;
+    -webkit-border-radius:28px;
+    border-radius:28px;
+    border:1px solid #18ab29;
+    display:inline-block;
+    cursor:pointer;
+    color:#ffffff;
+    font-family:Arial;
+    font-size:17px;
+    padding:16px 31px;
+    text-decoration:none;
+    text-shadow:0px 1px 0px #2f6627;
+}
+.start:hover {
+    background-color:#5cbf2a;
+}
+.start:active {
+    position:relative;
+    top:1px;
+}
+.content {
+    margin-left: 50px;
+    max-width: 800px;
+    font-family: "Arial"
+}
+.slider {
+  -webkit-appearance: none;  /* Override default CSS styles */
+  appearance: none;
+  width: 50%; /* Full-width */
+  height: 25px; /* Specified height */
+  background: #d3d3d3; /* Grey background */
+  outline: none; /* Remove outline */
+  transition: opacity .2s;
+}
+p.instrs {
+    max-width: 400px;
+}
+
+</style>
+</head>
+<body>
+<div class="content">
+<H1>Missing Fundamental Demo</H1>
+
+If you play a note on a "harmonic" instrument such as most wind or string instruments you get a sound that is a superposition of a <i>fundamental</i> tone and higher frequency <i>overtones</i>. So if you a play a note with pitch <i>f</i>, the sound you hear will often have an amplitude that is a slowly changing envelope multiplied by a signal that looks like
+<blockquote>
+<i>a</i><sub>0</sub>cos(2&pi;<i>ft</i>+&phi;<sub>0</sub>)+
+<i>a</i><sub>1</sub>cos(4&pi;<i>ft</i>+&phi;<sub>1</sub>)+
+<i>a</i><sub>2</sub>cos(6&pi;<i>ft</i>+&phi;<sub>2</sub>)+...
+</blockquote>
+Subjectively we perceive <i>f</i> as the pitch of the note even though there are higher frequencies present.
+
+But curiously, you can sometimes remove the fundamental and still feel like the pitch of the note is unchanged even though the timbre changes. The human psychoacoustic system seems to recognise the presence of the frequencies 2<i>f</i> and 3<i>f</i> as a hint that the frequency <i>f</i> is present even if it isn't. This is known as the <a href="https://en.wikipedia.org/wiki/Missing_fundamental">missing fundamental</a> phenomenon.
+
+<P>
+This has practical applications, for example it can be used to fake low notes in organs too small to achieve them, and it's used in audio production to boost the feeling of bass even when bass isn't present, for example when music is played on low quality sound equipment.
+</p>
+
+<p>
+This is a live demo and before the audio starts there's one thing you have to do:
+
+<div>
+<button type="button" class="start" id="start">
+Press me to start
+</button>
+</div>
+</p>
+
+<HR>
+
+<p class="instrs">
+Use this slider to control the frequency of the fundamental
+</p>
+<div>
+  <input type="range" min="30" max="80" value="50" class="slider" id="sliderf">
+  Fundamental: <label id = "fred">50</label>
+</div>
+<hr>
+<p class="instrs">
+Use the following sliders to control the amplitudes of the first five harmonics.
+There's also a check box to switch each harmonic on or off.
+</p>
+<div>
+  <input type="range" min="0" max="100" value="50" class="slider" id="slider0">
+
+<label class="switch">
+  <input type="checkbox" id="button0">
+</label>
+Fundamental
+</div>
+
+<div>
+  <input type="range" min="0" max="100" value="50" class="slider" id="slider1">
+
+<label class="switch">
+  <input type="checkbox" id="button1">
+</label>
+First overtone
+</div>
+
+<div>
+  <input type="range" min="0" max="100" value="50" class="slider" id="slider2">
+
+<label class="switch">
+  <input type="checkbox" id="button2">
+</label>
+Second overtone
+</div>
+
+<div>
+  <input type="range" min="0" max="100" value="50" class="slider" id="slider3">
+
+<label class="switch">
+  <input type="checkbox" id="button3">
+</label>
+Third overtone
+</div>
+
+<div>
+  <input type="range" min="0" max="100" value="50" class="slider" id="slider4">
+
+<label class="switch">
+  <input type="checkbox" id="button4">
+</label>
+Fourth overtone
+</div>
+
+<hr>
+I suggest setting the fundamental to around 50 Hz and switching on only the first overtone.
+If you listen with
+
+<canvas width="800px" height="200px" style="border:1px" id="graph"></canvas>
+This is what the signal might look like depending on what the exact phase for each frequency is.
+</content>
+
+
+<script type="text/javascript">
+function main() {
+  var context = new window.AudioContext();
+
+  var oscs = []
+  var gains = []
+  var buttons = []
+  var sliders = []
+
+  var c = document.getElementById("graph")
+  var ctx = c.getContext("2d")
+  function drawGraph() {
+    ctx.clearRect(0, 0, c.width, c.height)
+    ctx.beginPath()
+    oldy=0;
+    ctx.moveTo(0, 100)
+    for (x = 0; x < 800; ++x) {
+        y = 0;
+        for (i = 0; i < 5; ++i) {
+            f = oscs[i].frequency.value
+            a = gains[i].gain.value
+            y += 50*a*Math.sin(0.001*f*x)
+        }
+        ctx.lineTo(x, 100+y)
+        oldy=y;
+    }
+    ctx.stroke()
+  }
+
+  for (i = 0; i < 5; ++i) {
+    var osc = context.createOscillator();
+    oscs.push(osc)
+    osc.frequency.value = 50 * (i+1);
+
+    var gain = context.createGain();
+    gains.push(gain)
+    gain.gain.value = 0.0
+    osc.connect(gain)
+    gain.connect(context.destination);
+
+    osc.start(0);
+
+    var slider = document.getElementById("slider" + i)
+    slider.i = i
+    slider.oninput = function() {
+        i = this.i
+        osc = oscs[i]
+        button = buttons[i]
+        gain = gains[i]
+        if (button.checked) {
+          gain.gain.value = this.value/100.0;
+        }
+        drawGraph()
+    }
+    sliders.push(slider)
+
+    var button = document.getElementById("button" + i);
+    button.i = i
+    buttons.push(button)
+    button.onclick = function() {
+        i = this.i
+        osc = oscs[i]
+        slider = sliders[i]
+        gain = gains[i]
+        if (this.checked) {
+            gain.gain.value = slider.value/100.0
+        } else {
+            gain.gain.value = 0.0
+        }
+        drawGraph()
+    }
+  }
+  sliderf = document.getElementById("sliderf")
+  sliderf.oninput = function() {
+    f = sliderf.value
+    document.getElementById("fred").innerHTML = f
+    for (i = 0; i < 5; ++i) {
+      oscs[i].frequency.value = f * (i+1)
+    }
+    drawGraph()
+  }
+}
+
+document.getElementById('start').addEventListener('click', function() {
+  main()
+});
+
+</script>
+</body>
