@@ -1,0 +1,237 @@
+==Introduction==
+Here's a fragment of code that with minor syntax changes could be in just about any popular programming language:
+
+<source lang="haskell">
+  a = 1/(1+7)
+  b = 2*a+sqrt(a)
+  c = atan(b)/(1+c)
+  return c+2*d
+</source>
+(Nothing I want to say here is specific to any particular programming language so I'm going to write examples in a vaguely Python-like pseudocode.)
+
+Conceptually how might you split that into two?
+When I put on my imperative programmer hat I see the assignments as actions that have the side effect of creating or updating variables. So a natural place to make a break is between two lines.
+
+<source lang="haskell">
+  a = 1/(1+7)
+  b = 2*a+sqrt(a)
+  ...
+</source>
+<source lang="haskell">
+  ...
+  c = atan(b)/(1+c)
+  return c+2*d
+</source>
+
+But when I put on my functional programmer hat I see a different way to split it.
+I view it as something like this
+<source lang="haskell">
+  a = 1/(1+7)
+  ... 2*a+sqrt(a)
+</source>
+<source lang="haskell">
+  ...
+  lambda b:
+    c = atan(b)/(1+c)
+    return c+2*d
+</source>
+where the lambda expression in the second part is applied to the expression at the end of the first part.
+Instead of splitting up the code as one computation performing an action followed by another, it can be seen as a computation with a value that has a function applied to it.
+In this context, such a function is called a ''continuation''.
+
+I'd like to talk about how the second viewpoint has some nice applications.
+
+==Overloading assignment==
+Many languages come with overloadable syntax. For example, in C++ we can overload <code>operator[]</code> and <code>operator==</code>, in Python we can overload functions like <code>__add__</code>, and in Haskell we can defines new instances for type classes like <code>Num</code>.
+
+In my examples above I used the assignment operator <code>=</code>.
+How might we overload this "operator"?
+In C++, say, we can overload <code>operator=</code>.
+This fits with the first concept in the introduction: for example it might be used to implement an optimised version of assignment that copies some data from one place to another and whose operation is completely finished before we get to the next statement.
+
+But the second viewpoint above suggests another way to, in some sense, overload <code>=</code>.
+
+==List Comprehension==
+Some languages support blocks of code that have an assignment-like operator where assigment has a different meaning from the usual.
+Consider the Python code
+
+<source lang="python">
+  [A for b in C
+     for d in E
+     for e in F]
+</source>
+
+where I've used upper-case letters as metavariables that stand for more complex expressions.
+
+The sequence
+
+<source lang="python">
+  for b in C
+  for d in E
+  for e in F
+</source>
+
+is a lot like a sequence of assignments.
+The difference between <code>for b in C</code> and <code>b = C</code> is merely syntactic and Python could probably have been designed to use a syntax like
+
+<source lang="python">
+  [A for b = C
+         d = E
+         e = F]
+</source>
+
+This suggests the possibility that if we enabled the overloading of <code>=</code> in the right way, it would allow us to implement list comprehension in a language that doesn't have explicit list comprehension support.
+
+==Some more detail==
+Consider the fragment
+
+<source lang="haskell">
+  a = A
+  return B
+</source>
+
+We can rewrite this as
+
+<source lang="haskell">
+  (lambda a: B)(A)
+</source>
+
+where I'm using upper case <code>A</code> and <code>B</code> to stand for expressions rather than as variables within our language.
+(So <code>B</code> may contain mentions of <code>a</code>.)
+
+Suppose the expression <code>A</code> has type \(X\) and <code>B</code> has type \(Y\).
+Then the continuation has to accept arguments of type \(X\) and return values of type \(Y\).
+So it has type \(X\rightarrow Y\).
+Even if we're using a language without static types it's useful to think of our functions in this way.
+In the continuation model we apply the continuation of type \(X\rightarrow Y\) to an argument of type \(X\) to get a \(Y\).
+We can think of this as an application of a higher order function, let's call it <code>eval</code>, that takes as argument both a continuation and an argument, applying the former to the latter.
+In effect, a computer program is a sequence of applications of <code>eval</code>.
+And that gives us a great place to insert overloading: allow users to define <code>eval</code>.
+This gives a lot of freedom to manipulate how a program executes.
+We don't have to simply apply the continuation directly to the "argument", we can do all kinds of other things, including completely ignoring the continuation (which is what raising an exception does).
+
+Let's rewrite:
+
+<source lang="python">
+  b = C
+  e = F
+  return A
+</source>
+
+Do the last two lines first
+
+<source lang="python">
+  b = C
+  return (lambda e: return A)(f)
+</source>
+
+and now the whole thing
+
+<source lang="python">
+  return (lambda b: (lambda e: A)(F))(C)
+</source>
+
+And now we can rewrite it with <code>eval</code>:
+
+<source lang="python">
+  return eval(lambda b: eval(lambda e: A, F), C)
+</source>
+
+==Back to list comprehension==
+Consider the meaning, in Python say, of
+
+<source lang="python">
+  [A for b = C
+         e = F]
+</source>
+
+typically <code>C</code> is a list (or an iterator that can yield elements one by one like a list).
+Consider the fragment
+
+<source lang="python">
+         b = ...    
+         e = F]
+</source>
+
+as a continuation.
+For list comprehension the intention isn't simply that the continuation is applied directly to <code>C</code>.
+We want it applied to each element of <code>C</code> in turn and then we want to collect the results.
+In other words, we need our continuation to be called many times.
+This is why the imperative style overloading I described above would be hard to use.
+It's functionality is delimited by the statement it's part of and it doesn't know about anything the continuation.
+You might guess that the way we might use it is to overload <code>eval</code> above with Python's <code>map</code> function that applies a function to every element of a list and collects the results in a list.
+So the code above might become:
+
+<source lang="python">
+  map(lambda b: map(lambda e: A, F), C)
+</source>
+
+But that isn't quite right. If F is a list, and so is C, we end up making a list of lists rather than a list.
+We need to flatten everything out to a list again at the end.
+So instead of <code>map</code> we use <code>concatMap</code> defined as
+
+<source lang="python">
+  def concatMap(f, x):
+    return [a for y in x
+              for a in f(y)]
+</source>
+We collect the elements of each <code>f(y)</code> into a list rather then collect the <code>f(y)</code>'s.
+
+We find that
+<source lang="python">
+  concatMap(lambda b: concatMap(lambda e: [A], F), C)
+</source>
+does the job.
+(Note one little wrinkle, <code>concatMap</code> expects a list for the second argument so I replaced <code>A</code> with the single element list <code>[A]</code>.)
+
+We can try it on some real Python code.
+Start with this comprehension
+<source lang="python">
+[e+1 for b in [1, 2, 3]
+     for e in [10*b, 100*b]]
+</source>
+
+Using the rewrite method I sketched this becomes
+<source lang="python">
+print [e+1 for b in [1, 2, 3]
+    ¦   ¦  for e in [10*b, 100*b]]
+</source>
+You should get the same result.
+
+In other words, in a language that allows you to overload <code>eval</code>, you can implement list comprehension without having to make it a feature by modifying the original language.
+
+==Er...monads==
+I wrote about an implementation of this kind of code rewrite many years ago at [https://github.com/dpiponi/Monad-Python Monad-Python] but I wrote about that speciifically as a way to implement monads in Python.
+I don't really want to mention monads today except to say that you can think of them as a disciplined form of overloading of <code>=</code> where the types of the continuation and its "argument" follow certain rules.
+I've also written about the connection between monads and continuations at [https://www.schoolofhaskell.com/school/to-infinity-and-beyond/pick-of-the-week/the-mother-of-all-monads The Mother of all Monads].
+
+==Another application==
+Thinking about code as splitting into continuations and arguments is old.
+It's the first step towards continuation passing style which has long been used as an intermediate representation inside compilers.
+But people seem less familiar with it today even though it could probably usefully inform the design of programming languages.
+For example, in probability theory we often see notation like
+
+\(
+\begin{align*}
+\sigma &\sim \textsf{Exponential}(\mu) \\
+\nu &\sim \textsf{Normal}(\mu, 1) \\
+z &\sim \textsf{Normal}(\nu, \sigma^2) \\
+\end{align*}
+\)
+
+Like with assignments and list comprehension we have pairs of variable names and expressions.
+This can also be interpreted as an overloading of <code>=</code> by replacing <code>eval</code>.
+Very often with probabilistic languages we want to interpret the same block of code with different semantics.
+For example we might want to draw samples one moment and then compute a probability distribution function the next.
+An overloadable <code>eval</code> can enable this, as well as a multitude of other interpretations.
+Again see the probabilistic examples at [https://github.com/dpiponi/Monad-Python Monad-Python] for one approach to this.
+
+==Final thoughts==
+Many people seem to write DSLs these days.
+My goal here was simply to encourage people who might not typically work in a functional style to think about how continuations might be useful in the design of their languages, even if it seems their language is imperative.
+Computer science is so big these days that the worlds of people who think in terms of continuations, and the worlds of people who don't, often fail to intersect.
+
+If you don't have an immediate application for continuation based "slicing", thinking about sequences of assignments as chains of function applications can be illuminating.
+The rewriting I discuss above is essentially what the Haskell compiler performs when it meets [https://en.wikibooks.org/wiki/Haskell/do_notation do-notation]. (But see also [https://gitlab.haskell.org/ghc/ghc/wikis/applicative-do ApplicativeDo.)
+
+(Oh, and as a side-effect you can use this approach to pack more into [http://blog.sigfpe.com/2008/09/on-writing-python-one-liners.html a single line of Python] :)

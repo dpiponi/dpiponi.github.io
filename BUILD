@@ -1,0 +1,1 @@
+pandoc -c pandoc.css -M title:"How to slice your code into continuations" -V toc-title:"Table of Contents" -c pandoc.css --toc --standalone -s -f mediawiki --mathjax -t html main.mediawiki -o main.html && open main.html
